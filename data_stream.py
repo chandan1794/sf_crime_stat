@@ -6,7 +6,6 @@ import pyspark.sql.functions as psf
 from dateutil.parser import parse as parse_date
 
 
-# TODO Create a schema for incoming resources
 schema = StructType([
             StructField("crime_id", StringType(), True),
             StructField("original_crime_type_name", StringType(), True),
@@ -23,7 +22,6 @@ schema = StructType([
             StructField("address_type", StringType(), True),
             StructField("common_location", StringType(), True)])
 
-# TODO create a spark udf to convert time to YYYYmmDDhh format
 @psf.udf(StringType())
 def udf_convert_time(timestamp):
     d_str = str(timestamp)
@@ -33,21 +31,15 @@ def udf_convert_time(timestamp):
 
 def run_spark_job(spark):
 
-    # TODO Create Spark Configuration
-    # Create Spark configurations with max offset of 200 per trigger
-    # set up correct bootstrap server and port
-    df = df = spark.readStream.format("kafka") \
+    df = spark.readStream.format("kafka") \
                 .option("kafka.bootstrap.servers", "localhost:9092") \
                 .option("subscribe", "service-calls") \
                 .option("maxOffsetPerTrigger", "200") \
                 .option("startingOffsets", "earliest") \
                 .load()
 
-    # Show schema for the incoming resources for checks
     df.printSchema()
 
-    # TODO extract the correct column from the kafka input resources
-    # Take only value and convert it to String
     kafka_df = df.selectExpr("CAST(value AS STRING)")
 
     service_table = kafka_df\
@@ -61,7 +53,6 @@ def run_spark_job(spark):
                 psf.col('address'),
                 psf.col('disposition'))
 
-    # TODO get different types of original_crime_type_name in 60 minutes interva
     counts_df = distinct_table \
         .withWatermark("call_date_time", "60 minutes") \
         .groupBy(
@@ -69,10 +60,8 @@ def run_spark_job(spark):
             psf.col("original_crime_type_name")
         ).count()
 
-    # TODO use udf to convert timestamp to right format on a call_date_time column
     converted_df = distinct_table.withColumn("call_date_time", udf_convert_time(psf.col("call_date_time")))
 
-    # TODO apply aggregations using windows function to see how many calls occurred in 2 day span
     calls_per_2_days = distinct_table \
         .withWatermark("call_date_time", "2 days") \
         .groupBy(
@@ -80,7 +69,6 @@ def run_spark_job(spark):
         ).count()
 
 
-    # TODO write output stream
     query_1 = counts_df \
             .writeStream \
             .outputMode('complete') \
@@ -96,7 +84,6 @@ def run_spark_job(spark):
             .option('truncate', 'false') \
             .start()
 
-    # TODO attach a ProgressReporter
     query_1.awaitTermination()
     query_2.awaitTermination()
 
@@ -104,7 +91,6 @@ def run_spark_job(spark):
 if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
-    # TODO Create Spark in Local mode
     spark = SparkSession \
                 .builder \
                 .appName('SF Crime Statistics with Spark Streaming') \
