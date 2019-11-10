@@ -46,3 +46,6 @@ To check if `producer_server.py` is working properly, run command below,
 ```
 python consumer_server.py
 ```
+
+## Screenshots
+All the screenshots related to the processes and logs are in the [screenshots](/screenshots). Please refer to them.
